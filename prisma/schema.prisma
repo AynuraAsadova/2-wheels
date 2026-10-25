@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Season {
+  summer
+  winter
+}
+
+enum BookingStatus {
+  pending
+  confirmed
+  rejected
+  cancelled
+}
+
+model Service {
+  id        String   @id @default(cuid())
+  name      String
+  duration  Int      
+  price     Int      
+  active    Boolean  @default(true)
+  bookings  Booking[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("services")
+}
+
+model ServiceArea {
+  id         String   @id @default(cuid())
+  postalCode String   @unique @map("postal_code")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("service_areas")
+}
+
+model BusinessSettings {
+  id            String   @id @default(cuid())
+  timezone      String   @default("America/Los_Angeles")
+  slotStepMin   Int      @default(30) @map("slot_step_min")
+  cancelWindowH Int      @default(48) @map("cancel_window_h")
+  summerStart   Int      @default(4)  @map("summer_start_month")
+  summerEnd     Int      @default(9)  @map("summer_end_month")
+  updatedAt     DateTime @updatedAt   @map("updated_at") @db.Timestamptz(3)
+
+  @@map("business_settings")
+}
+
+model BusinessHours {
+  id       String @id @default(cuid())
+  season   Season
+  weekday  Int
+  openMin  Int    @map("open_min")
+  closeMin Int    @map("close_min")
+
+  @@index([season, weekday])
+  @@map("business_hours")
+}
+
+model BlockedDate {
+  id        String   @id @default(cuid())
+  startAt   DateTime @map("start_at") @db.Timestamptz(3)
+  endAt     DateTime @map("end_at") @db.Timestamptz(3)
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("blocked_dates")
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([email])
+  @@map("email_verifications")
+}
+
+model Booking {
+  id           String        @id @default(cuid())
+  customerName String        @map("customer_name")
+  phone        String
+  email        String
+  address      String
+  postalCode   String        @map("postal_code")
+  note         String?
+  serviceId    String        @map("service_id")
+  service      Service       @relation(fields: [serviceId], references: [id])
+  startAt      DateTime      @map("start_at") @db.Timestamptz(3)
+  endAt        DateTime      @map("end_at") @db.Timestamptz(3)
+  status       BookingStatus @default(pending)
+  tokenHash    String        @unique @map("token_hash")
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([startAt])
+  @@index([status])
+  @@map("bookings")
+}
